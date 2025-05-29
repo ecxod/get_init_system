@@ -21,12 +21,14 @@ flowchart TD
     end
     
     subgraph Service2["Service-Manager Detection"]
-        SM1["Systemd prüfen"]:::start
-        SM2["Container-Umgebung prüfen"]:::process
-        SM3["Alternativen prüfen"]:::process
+        SYSM1{"/proc/1 present?"}:::start
+        SYSM2{"Container-Env?"}:::decision
+        SYSM3{"Systemd?"}:::decision
+        SYSM4["Alternativen prüfen"]:::process
 
-        SM1 --> SM2
-        SM2 --> SM3
+        SYSM1 --|No|--> SYSM2
+        SYSM2 --|No|--> SYSM3
+        SYSM3 --|No|--> SYSM4
     end
     
     subgraph Ergebnisse["Ergebnisse"]
@@ -41,9 +43,14 @@ flowchart TD
         UNKNOWN["Unknown"]:::result
     end
 
-    PROC3 --|Ja|--> SYSTEMD
-    PROC4 --|init|--> INIT
-    PROC4 --|Systemd|--> SYSTEMD
+    INIT_SYSTEM
+
+    PROC1 --|Yes|---> UNKNOWN
+    PROC2 --|Yes|---> CONTAINER
+    PROC3 --|Yes|---> SYSTEMD
+
+    PROC4 --|init|---> INIT
+    PROC4 --|Systemd|---> SYSTEMD
     PROC4 --|SysVinit|--> SYSVINIT
     PROC4 --|OpenRC|--> OPENRC
     PROC4 --|Runit|--> RUNIT
@@ -51,11 +58,21 @@ flowchart TD
     PROC4 --|Dinit|--> DINIT
     PROC4 --|Unbekannt|--> UNKNOWN
 
-    PROC1 --|Yes|--> UNKNOWN
+
+    SYSM1 --|Yes|---> UNKNOWN
+    SYSM2 --|Yes|---> CONTAINER
+    SYSM3 --|Yes|---> SYSTEMD
+
+    SYSM4 --|init|---> INIT
+    SYSM4 --|Systemd|--> SYSTEMD
+    SYSM4 --|SysVinit|--> SYSVINIT
+    SYSM4 --|OpenRC|--> OPENRC
+    SYSM4 --|Runit|--> RUNIT
+    SYSM4 --|S6|--> S6
+    SYSM4 --|Dinit|--> DINIT
+    SYSM4 --|Unbekannt|--> UNKNOWN
 
 
-    
-    PROC2 --|Ja|--> CONTAINER
 
     
     
