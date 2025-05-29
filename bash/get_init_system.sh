@@ -1,67 +1,134 @@
 #!/bin/sh
 # POSIX-konformes Skript zur Erkennung von Init- und Dienst-Manager
 
-get_service_manager() {
-    # Prüfe, ob /proc verfügbar ist (für spätere Prüfungen)
-    if [ ! -d /proc/1 ]; then echo "unknown (no /proc)"; return; fi
-
-    # Prüfe, ob Systemd als Dienst-Manager läuft
-    if systemctl --version >/dev/null 2>&1 && dbus-send --system --dest=org.freedesktop.systemd1 --print-reply /org/freedesktop/systemd1 org.freedesktop.DBus.Peer.Ping >/dev/null 2>&1; then echo "false"; return; fi
-
-    # Prüfe Container-Umgebung (oft kein echter Dienst-Manager)
-    if [ -f /.dockerenv ] || grep 'docker\|lxc\|container' /proc/1/cgroup >/dev/null 2>&1; then echo "container"; return ;fi
-
-    # Identifiziere alternative Dienst-Manager
-    if [ -x /sbin/rc-service ] && /sbin/rc-service --version >/dev/null 2>&1; then echo "openrc";
-    elif [ -d /etc/init.d ] && [ -x /sbin/service ]; then echo "sysvinit";
-    elif [ -x /usr/bin/sv ] && /usr/bin/sv status >/dev/null 2>&1; then echo "runit";
-    elif [ -x /usr/bin/s6-rc ]; then echo "s6";
-    elif [ -x /usr/bin/dinitctl ]; then echo "dinit";
-    else
-        # Fallback: Prüfe bekannte Konfigurationsverzeichnisse
-        if [ -d /etc/s6-rc ]; then echo "s6";
-        elif [ -d /etc/runit ]; then echo "runit";
-        elif [ -d /etc/dinit.d ]; then echo "dinit";
-        elif [ -d /etc/init.d ]; then echo "sysvinit";
-        else echo "unknown";
-        fi
+check_proc_1() {
+    # Prüfe, ob /proc verfügbar ist (für spätere Prüfungen), sonst "unknown (no /proc)"
+    if [ ! -d /proc/1 ]
+    then
+        echo "unknown"
+        return
+    else;
+        echo ""
+        return
     fi
 }
 
+check_docker_env() {
+    # Prüfe Container-Umgebung (oft kein echter Dienst-Manager)
+    if [ -f /.dockerenv ] || grep 'docker\|lxc\|container' /proc/1/cgroup >/dev/null 2>&1
+    then
+        echo "container"
+        return
+    else;
+        echo ""
+        return
+    fi
+}
+
+check_systed_procone() {
+    # test if Systemd is PID 1
+    if [ "$(readlink /proc/1/exe 2>/dev/null)" = "/lib/systemd/systemd" ] || [ "$(cat /proc/1/comm 2>/dev/null)" = "systemd" ]
+    then
+        echo "systemd"
+        return
+    elif
+    then
+        echo ""
+        return
+    fi    
+}
+
+systemd_service_manager() {
+    # test if Systemd runs as service manager
+    if  systemctl --version >/dev/null 2>&1 && \
+        dbus-send --system --dest=org.freedesktop.systemd1 --print-reply /org/freedesktop/systemd1 org.freedesktop.DBus.Peer.Ping >/dev/null 2>&1
+    then 
+        echo "systemd"
+        return
+    elif
+    then
+        echo ""
+        return
+    fi
+}
+
+
+
+get_service_manager() {
+
+    if [ -z $(check_proc_1) ]
+    then 
+        result=$(check_proc_1)
+    elif [ -z $(check_docker_env) ]
+    then 
+        result=$(check_docker_env)
+    elif [ -z $(systemd_service_manager) ]
+    then 
+        result=$(systemd_service_manager)
+    fi
+    
+    if [ -z ${result} ]
+    
+        # Identifiziere alternative Dienst-Manager
+        if [ -x /sbin/rc-service ] && /sbin/rc-service --version >/dev/null 2>&1; then result="openrc";
+        elif [ -d /etc/init.d ] && [ -x /sbin/service ]; then result="init";
+        elif [ -x /usr/bin/sv ] && /usr/bin/sv status >/dev/null 2>&1; then result="runit";
+        elif [ -x /usr/bin/s6-rc ]; then result="s6";
+        elif [ -x /usr/bin/dinitctl ]; then result="dinit";
+        else
+            # Fallback: Prüfe bekannte Konfigurationsverzeichnisse
+            if [ -d /etc/s6-rc ]; then result="s6";
+            elif [ -d /etc/runit ]; then result="runit";
+            elif [ -d /etc/dinit.d ]; then result="dinit";
+            elif [ -d /etc/init.d ]; then result="sysvinit";
+            else result="unknown";
+            fi
+        fi
+    fi
+
+    echo ${result}
+}
+
 get_init_system() {
-    # Prüfe, ob /proc verfügbar ist
-    if [ ! -d /proc/1 ]; then echo "unknown (no /proc)"; return; fi
 
-    # Prüfe Container-Umgebung
-    if [ -f /.dockerenv ] || grep -q 'docker\|lxc\|container' /proc/1/cgroup 2>/dev/null; then echo "container"; return; fi
-
-    # Prüfe Systemd als PID 1
-    if [ "$(readlink /proc/1/exe 2>/dev/null)" = "/lib/systemd/systemd" ] || [ "$(cat /proc/1/comm 2>/dev/null)" = "systemd" ]; then echo "false"; return; fi
+    if [ -z $(check_proc_1) ]
+    then 
+        result=$(check_proc_1)
+    elif [ -z $(check_docker_env) ]
+    then 
+        result=$(check_docker_env)
+    elif [ -z $(check_systed_procone) ]
+    then 
+        result=$(check_systed_procone)
+    fi
 
     # Identifiziere Init-System
-    init_exe=$(readlink /proc/1/exe 2>/dev/null)
+    #init_exe=$(readlink /proc/1/exe 2>/dev/null)
     init_comm=$(cat /proc/1/comm 2>/dev/null)
 
     case "$init_comm" in
         "init")
-            if [ -x /sbin/init ] && [ "$(readlink /sbin/init)" = "/lib/sysvinit/init" ]; then echo "sysvinit";
-            elif [ -x /sbin/init ] && grep -q "Upstart" /sbin/init 2>/dev/null; then echo "upstart";
-            else echo "unknown";
+            if [ -x /sbin/init ] && [ "$(readlink /sbin/init)" = "/lib/sysvinit/init" ]; then result="sysvinit";
+            elif [ -x /sbin/init ] && grep -q "Upstart" /sbin/init 2>/dev/null; then result="upstart";
+            elif [ -x /sbin/init ] && grep -q "Init" /sbin/init 2>/dev/null; then result="init";
+            else result="unknown";
             fi
             ;;
-        "runit") echo "runit" ;;
-        "openrc-init") echo "openrc" ;;
-        "s6-svscan") echo "s6" ;;
-        "dinit") echo "dinit" ;;
+        "runit") result="runit" ;;
+        "openrc-init") result="openrc" ;;
+        "s6-svscan") result="s6" ;;
+        "dinit") result="dinit" ;;
         *)
-            if [ -x /sbin/openrc-init ]; then echo "openrc";
-            elif [ -x /usr/bin/runit ]; then echo "runit";
-            elif [ -x /sbin/dinit ]; then echo "dinit";
-            elif [ -x /sbin/init ] && [ "$(readlink /sbin/init)" = "/lib/sysvinit/init" ]; then echo "sysvinit";
-            else echo "unknown";
+            if [ -x /sbin/openrc-init ]; then result="openrc";
+            elif [ -x /usr/bin/runit ]; then result="runit";
+            elif [ -x /sbin/dinit ]; then result="dinit";
+            elif [ -x /sbin/init ] && [ "$(readlink /sbin/init)" = "/lib/sysvinit/init" ]; then result="sysvinit";
+            else result="unknown";
             fi
             ;;
     esac
+
+    echo ${result}
 }
 
 INIT_SYSTEM=$(get_init_system)
