@@ -91,43 +91,48 @@ get_service_manager() {
 
 get_init_system() {
     result=$(check_proc_1)
-    if [ -z ${result} ]; then 
-        result=$(check_proc_1)
-        if [ -z ${result} ]; then  
-            result=$(check_docker_env)
-            if [ -z ${result} ]; then  
-                result=$(check_systed_procone)
-                if [ -z ${result} ]
-                    # Identifiziere Init-System
-                    #init_exe=$(readlink /proc/1/exe 2>/dev/null)
-                    init_comm=$(cat /proc/1/comm 2>/dev/null)
-
-                    case "$init_comm" in
-                        "init")
-                            if [ -x /sbin/init ] && [ "$(readlink /sbin/init)" = "/lib/sysvinit/init" ]; then result="sysvinit";
-                            elif [ -x /sbin/init ] && grep -q "Upstart" /sbin/init 2>/dev/null; then result="upstart";
-                            elif [ -x /sbin/init ] && grep -q "Init" /sbin/init 2>/dev/null; then result="init";
-                            else result="unknown";
-                            fi
-                            ;;
-                        "runit") result="runit" ;;
-                        "openrc-init") result="openrc" ;;
-                        "s6-svscan") result="s6" ;;
-                        "dinit") result="dinit" ;;
-                        *)
-                            if [ -x /sbin/openrc-init ]; then result="openrc";
-                            elif [ -x /usr/bin/runit ]; then result="runit";
-                            elif [ -x /sbin/dinit ]; then result="dinit";
-                            elif [ -x /sbin/init ] && [ "$(readlink /sbin/init)" = "/lib/sysvinit/init" ]; then result="sysvinit";
-                            else result="unknown";
-                            fi
-                            ;;
-                    esac
-                fi
-            fi
-        fi
+    if [ -z "$result" ]; then
+        result=$(check_docker_env)
     fi
-    echo ${result}
+    if [ -z "$result" ]; then
+        result=$(check_systed_procone)
+    fi
+
+    if [ -z "$result" ]; then
+        init_comm=$(cat /proc/1/comm 2>/dev/null)
+        case "$init_comm" in
+            "init")
+                if [ -x /sbin/init ]; then
+                    if [ "$(readlink /sbin/init)" = "/lib/sysvinit/init" ]; then
+                        result="sysvinit"
+                    elif grep -q "Upstart" /sbin/init 2>/dev/null; then
+                        result="upstart"
+                    else
+                        result="unknown"
+                    fi
+                else
+                    result="unknown"
+                fi
+                ;;
+            "runit") result="runit" ;;
+            "openrc-init") result="openrc" ;;
+            "s6-svscan") result="s6" ;;
+            "dinit") result="dinit" ;;
+            *)
+                if [ -x /sbin/openrc-init ]; then
+                    result="openrc"
+                elif [ -x /usr/bin/runit ]; then
+                    result="runit"
+                elif [ -x /sbin/dinit ]; then
+                    result="dinit"
+                else
+                    result="unknown"
+                fi
+                ;;
+        esac
+    fi
+
+    echo "$result"
 }
 
 INIT_SYSTEM=$(get_init_system)
