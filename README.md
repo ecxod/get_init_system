@@ -21,23 +21,43 @@ Das /proc-Dateisystem ist ein Standard in Linux, basierend auf dem POSIX-ähnlic
 ### 1. Container-Umgebungen (z.B. Docker, Podman, LXC):  
 In Containern ist PID 1 oft nicht das tatsächliche Init-System des Host-Systems, sondern ein Prozess wie /bin/bash, ein spezieller Container-Init-Prozess (z.B. tini, dumb-init) oder die Hauptanwendung des Containers.  
 - **Beispiel:** In einem Docker-Container könnte `/proc/1/exe` auf `/bin/myapp` zeigen, obwohl der Host Systemd verwendet.  
-- **Lösung:** In Containern sollte man zusätzlich prüfen, ob man sich in einer Container-Umgebung befindet (z.B. durch `cat /proc/1/cgroup` oder die Existenz von `/.dockerenv`).  
+- **Lösung:** In Containern sollte man zusätzlich prüfen, ob man sich in einer Container-Umgebung befindet (z.B. durch `cat /proc/1/cgroup` oder die Existenz von `/.dockerenv`).
+
 ### 2. Eingeschränkte /proc-Zugriffe:  
 Auf Systemen mit hohen Sicherheitsvorkehrungen (z.B. mit `SELinux`, `AppArmor` oder `Namespaces`) kann der Zugriff auf `/proc/1/exe` oder `/proc/1/comm` eingeschränkt sein, was zu Berechtigungsfehlern führt.  
 - **Beispiel:** Ein Skript ohne Root-Rechte könnte `Permission denied` erhalten.  
-- **Lösung:** Das Skript sollte Fehlerbehandlung einbauen (z.B. `2>/dev/null`) oder alternative Methoden wie `ps -p 1` verwenden.  
+- **Lösung:** Das Skript sollte Fehlerbehandlung einbauen (z.B. `2>/dev/null`) oder alternative Methoden wie `ps -p 1` verwenden.
+
 ### 3. Nicht-Standard-Kernel oder minimalistische Systeme:  
 Sehr minimalistische Linux-Systeme (z.B. eingebettete Systeme oder spezielle Builds wie `Buildroot`) könnten ein eingeschränktes /proc-Dateisystem haben oder es ganz deaktivieren.  
 Solche Systeme sind jedoch selten und meist speziell angepasst.  
-**Lösung:** Fallback auf andere Methoden wie die Prüfung von Binaries (z.B. `/sbin/init`).  
+**Lösung:** Fallback auf andere Methoden wie die Prüfung von Binaries (z.B. `/sbin/init`).
+
 ### 4.  Exotische oder angepasste Init-Systeme:  
 Manche Distributionen oder Setups verwenden angepasste Init-Systeme, die `/proc/1/comm` mit ungewöhnlichen Namen füllen (z.B. ein Skript als PID 1).  
 **Beispiel:** Ein System könnte ein benutzerdefiniertes Init-Skript verwenden, das in /proc/1/comm als bash erscheint.  
-**Lösung:** Prüfung mit anderen Indikatoren kombinieren, wie z.B. spezifischen Binaries oder Konfigurationsdateien (z.B. `/etc/runit` für `runit`).  
+**Lösung:** Prüfung mit anderen Indikatoren kombinieren, wie z.B. spezifischen Binaries oder Konfigurationsdateien (z.B. `/etc/runit` für `runit`).
+
 ### 5. Chroot- oder Namespaced-Umgebungen:  
 In einem chroot oder einer isolierten Umgebung könnte `/proc/1/exe` auf einen Prozess zeigen, der nicht dem tatsächlichen Host-Init-System entspricht.  
 **Lösung:** Hier müsste man prüfen ob das Skript in einem chroot läuft (z.B. durch Vergleich von `/proc/1/root` mit `/`).
+
 ### 6. Systeme mit gemischten Init-Systemen:  
 In seltenen Fällen (z.B. bei Übergängen oder Testumgebungen) könnten mehrere Init-Systeme koexistieren, was die Erkennung erschwert.  
 **Beispiel:** `Systemd` könnte als Dienst-Manager laufen, aber ein anderes System (z.B. `openrc`) als PID 1.  
 **Lösung:** Hier müsste man zusätzliche Systemd-spezifische Schnittstellen wie D-Bus oder systemctl.  
+
+#### Beispielaufruf :
+```sh
+# Das aufrufen des scripts `get_init_system` stellt ihnen die Functionen `get_init_system` und `get_service_manager` und zusätzlich die Konstanten `INIT_SYSTEM` und `SERVICE_MANAGER` zur Verfügung
+
+./get_init_system
+
+init_system=$(get_init_system)
+service_manager=$(get_service_manager)
+
+# und / oder
+
+init_system=${INIT_SYSTEM}
+service_manager=${SERVICE_MANAGER}
+```
