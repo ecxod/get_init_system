@@ -32,11 +32,11 @@ get_init_system() {
     # Prüfe, ob /proc verfügbar ist
     if [ ! -d /proc/1 ]; then echo "unknown (no /proc)"; return; fi
 
-    # Prüfe Systemd als PID 1
-    if [ "$(readlink /proc/1/exe 2>/dev/null)" = "/lib/systemd/systemd" ] || [ "$(cat /proc/1/comm 2>/dev/null)" = "systemd" ]; then echo "false"; return; fi
-
     # Prüfe Container-Umgebung
     if [ -f /.dockerenv ] || grep -q 'docker\|lxc\|container' /proc/1/cgroup 2>/dev/null; then echo "container"; return; fi
+
+    # Prüfe Systemd als PID 1
+    if [ "$(readlink /proc/1/exe 2>/dev/null)" = "/lib/systemd/systemd" ] || [ "$(cat /proc/1/comm 2>/dev/null)" = "systemd" ]; then echo "false"; return; fi
 
     # Identifiziere Init-System
     init_exe=$(readlink /proc/1/exe 2>/dev/null)
