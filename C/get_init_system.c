@@ -1,16 +1,22 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#include <stdlib.h>
+#include <stdarg.h>
 
 #define MAX_PATH 256
 #define MAX_LINE 256
 
-/* Debugging-Funktion */
-void debug(const char *msg) {
+/* Debugging-Funktion mit Format-String-Unterstützung */
+void debug(const char *fmt, ...) {
     if (getenv("DEBUG") && strcmp(getenv("DEBUG"), "1") == 0) {
-        fprintf(stderr, "[DEBUG] %s\n", msg);
+        va_list args;
+        va_start(args, fmt);
+        fprintf(stderr, "[DEBUG] ");
+        vfprintf(stderr, fmt, args);
+        fprintf(stderr, "\n");
+        va_end(args);
     }
 }
 
