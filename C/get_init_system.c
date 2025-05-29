@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <stdlib.h>
 
 #define MAX_PATH 256
 #define MAX_LINE 256
