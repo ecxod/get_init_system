@@ -55,8 +55,11 @@ jobs:
 
       - name: Set up build environment
         run: |
-          dnf install -y gcc rpm-build make
-          mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS}
+          dnf install -y gcc rpm-build make tar git
+          mkdir -p /github/home/rpmbuild/{BUILD,RPMS,SOURCES,SPECS}
+
+      - name: Debug directory structure
+        run: ls -ld /github/home/rpmbuild /github/home/rpmbuild/SPECS
 
       - name: Compile get_init_system
         run: |
@@ -65,10 +68,10 @@ jobs:
 
       - name: Create RPM spec file
         run: |
-          mkdir -p ~/rpmbuild/SOURCES/get_init_system-1.0.0
-          cp get_init_system ~/rpmbuild/SOURCES/get_init_system-1.0.0/
-          cp get_service_manager ~/rpmbuild/SOURCES/get_init_system-1.0.0/
-          cat << EOF > ~/rpmbuild/SPECS/get_init_system.spec
+          mkdir -p /github/home/rpmbuild/SOURCES/get_init_system-1.0.0
+          cp get_init_system /github/home/rpmbuild/SOURCES/get_init_system-1.0.0/
+          cp get_service_manager /github/home/rpmbuild/SOURCES/get_init_system-1.0.0/
+          cat << EOF > /github/home/rpmbuild/SPECS/get_init_system.spec
           Name:           get-init-system
           Version:        1.0.0
           Release:        1%{?dist}
@@ -108,17 +111,17 @@ jobs:
 
       - name: Create source tarball
         run: |
-          tar -czf ~/rpmbuild/SOURCES/get_init_system-1.0.0.tar.gz -C ~/rpmbuild/SOURCES get_init_system-1.0.0
+          tar -czf /github/home/rpmbuild/SOURCES/get_init_system-1.0.0.tar.gz -C /github/home/rpmbuild/SOURCES get_init_system-1.0.0
 
       - name: Build RPM package
         run: |
-          rpmbuild -ba ~/rpmbuild/SPECS/get_init_system.spec
+          rpmbuild -ba /github/home/rpmbuild/SPECS/get_init_system.spec
 
       - name: Upload RPM package
         uses: actions/upload-artifact@v4
         with:
           name: rpm-package
-          path: ~/rpmbuild/RPMS/*/*.rpm
+          path: /github/home/rpmbuild/RPMS/*/*.rpm
 
   build-suse:
     runs-on: ubuntu-latest
@@ -134,7 +137,7 @@ jobs:
 
       - name: Compile get_init_system
         run: |
-          gcc -o get_init_system get_init_system.c
+          gcc -o get_init_system C/get_init_system.c
           ln -s get_init_system get_service_manager
 
       - name: Create RPM spec file for SUSE
