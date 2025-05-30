@@ -1,0 +1,195 @@
+name: Build Debian and RPM Packages
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-debian:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up build environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc make dpkg-dev
+
+      - name: Compile get_init_system
+        run: |
+          gcc -o get_init_system get_init_system.c
+          ln -s get_init_system get_service_manager
+
+      - name: Create Debian package structure
+        run: |
+          mkdir -p get_init_system-1.0.0/DEBIAN
+          mkdir -p get_init_system-1.0.0/usr/bin
+          cp get_init_system get_init_system-1.0.0/usr/bin/
+          cp get_service_manager get_init_system-1.0.0/usr/bin/
+          cat << EOF > get_init_system-1.0.0/DEBIAN/control
+          Package: get-init-system
+          Version: 1.0.0
+          Architecture: $(dpkg --print-architecture)
+          Maintainer: Your Name <your.email@example.com>
+          Description: A tool to detect init and service manager on Linux systems
+          EOF
+
+      - name: Build Debian package
+        run: dpkg-deb --build --root-owner-group get_init_system-1.0.0
+
+      - name: Upload Debian package
+        uses: actions/upload-artifact@v4
+        with:
+          name: debian-package
+          path: get_init_system-1.0.0.deb
+
+  build-rpm:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up build environment
+        run: |
+          dnf install -y gcc rpm-build make
+          mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS}
+
+      - name: Compile get_init_system
+        run: |
+          gcc -o get_init_system get_init_system.c
+          ln -s get_init_system get_service_manager
+
+      - name: Create RPM spec file
+        run: |
+          mkdir -p ~/rpmbuild/SOURCES/get_init_system-1.0.0
+          cp get_init_system ~/rpmbuild/SOURCES/get_init_system-1.0.0/
+          cp get_service_manager ~/rpmbuild/SOURCES/get_init_system-1.0.0/
+          cat << EOF > ~/rpmbuild/SPECS/get_init_system.spec
+          Name:           get-init-system
+          Version:        1.0.0
+          Release:        1%{?dist}
+          Summary:        A tool to detect init and service manager on Linux systems
+          License:        MIT
+          Group:          System Environment/Base
+          Source0:        get_init_system-1.0.0.tar.gz
+          BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root
+
+          %description
+          A simple tool to detect the init system and service manager on Linux systems.
+
+          %prep
+          %setup -q -n get_init_system-1.0.0
+
+          %build
+          # Already built
+
+          %install
+          rm -rf \$RPM_BUILD_ROOT
+          mkdir -p \$RPM_BUILD_ROOT/usr/bin
+          install -m 755 get_init_system \$RPM_BUILD_ROOT/usr/bin/
+          install -m 755 get_service_manager \$RPM_BUILD_ROOT/usr/bin/
+
+          %clean
+          rm -rf \$RPM_BUILD_ROOT
+
+          %files
+          %defattr(-,root,root,-)
+          /usr/bin/get_init_system
+          /usr/bin/get_service_manager
+
+          %changelog
+          * $(date +"%a %b %d %Y") Your Name <your.email@example.com> - 1.0.0-1
+          - Initial release
+          EOF
+
+      - name: Create source tarball
+        run: |
+          tar -czf ~/rpmbuild/SOURCES/get_init_system-1.0.0.tar.gz -C ~/rpmbuild/SOURCES get_init_system-1.0.0
+
+      - name: Build RPM package
+        run: |
+          rpmbuild -ba ~/rpmbuild/SPECS/get_init_system.spec
+
+      - name: Upload RPM package
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-package
+          path: ~/rpmbuild/RPMS/*/*.rpm
+
+  build-suse:
+    runs-on: ubuntu-latest
+    container: opensuse/leap:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up build environment
+        run: |
+          zypper install -y gcc rpm-build make
+          mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS}
+
+      - name: Compile get_init_system
+        run: |
+          gcc -o get_init_system get_init_system.c
+          ln -s get_init_system get_service_manager
+
+      - name: Create RPM spec file for SUSE
+        run: |
+          mkdir -p ~/rpmbuild/SOURCES/get_init_system-1.0.0
+          cp get_init_system ~/rpmbuild/SOURCES/get_init_system-1.0.0/
+          cp get_service_manager ~/rpmbuild/SOURCES/get_init_system-1.0.0/
+          cat << EOF > ~/rpmbuild/SPECS/get_init_system.spec
+          Name:           get-init-system
+          Version:        1.0.0
+          Release:        1%{?dist}
+          Summary:        A tool to detect init and service manager on Linux systems
+          License:        MIT
+          Group:          System Environment/Base
+          Source0:        get_init_system-1.0.0.tar.gz
+          BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root
+
+          %description
+          A simple tool to detect the init system and service manager on Linux systems.
+
+          %prep
+          %setup -q -n get_init_system-1.0.0
+
+          %build
+          # Already built
+
+          %install
+          rm -rf \$RPM_BUILD_ROOT
+          mkdir -p \$RPM_BUILD_ROOT/usr/bin
+          install -m 755 get_init_system \$RPM_BUILD_ROOT/usr/bin/
+          install -m 755 get_service_manager \$RPM_BUILD_ROOT/usr/bin/
+
+          %clean
+          rm -rf \$RPM_BUILD_ROOT
+
+          %files
+          %defattr(-,root,root,-)
+          /usr/bin/get_init_system
+          /usr/bin/get_service_manager
+
+          %changelog
+          * $(date +"%a %b %d %Y") Your Name <your.email@example.com> - 1.0.0-1
+          - Initial release
+          EOF
+
+      - name: Create source tarball
+        run: |
+          tar -czf ~/rpmbuild/SOURCES/get_init_system-1.0.0.tar.gz -C ~/rpmbuild/SOURCES get_init_system-1.0.0
+
+      - name: Build RPM package for SUSE
+        run: |
+          rpmbuild -ba ~/rpmbuild/SPECS/get_init_system.spec
+
+      - name: Upload SUSE RPM package
+        uses: actions/upload-artifact@v4
+        with:
+          name: suse-rpm-package
+          path: ~/rpmbuild/RPMS/*/*.rpm
