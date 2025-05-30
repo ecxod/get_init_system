@@ -13,6 +13,15 @@
         - [2.3.4. Exotic or adapted init systems:](#234-exotic-or-adapted-init-systems)
         - [2.3.5. Chroot or Namespaced environments:](#235-chroot-or-namespaced-environments)
         - [2.3.6. Systems with mixed init systems:](#236-systems-with-mixed-init-systems)
+    - [3. Some Examples](#3-some-examples)
+        - [3.1. Bash (sh, bash, zsh)](#31-bash-sh-bash-zsh)
+        - [3.2. Python](#32-python)
+        - [3.3. Perl](#33-perl)
+        - [3.4. Ruby](#34-ruby)
+        - [3.5. PHP](#35-php)
+        - [3.6. Node.js (JavaScript)](#36-nodejs-javascript)
+        - [3.7. C (How to use the binary)](#37-c-how-to-use-the-binary)
+        - [3.8. Go](#38-go)
 <!-- /TOC -->
 
 
@@ -71,7 +80,7 @@ The /proc file system is a standard in Linux, based on the POSIX-like kernel int
 ### 2.2. Linux Distributions
 The method works reliably on most standard Linux distributions, including:
 
-- In Systemd distributions `Debian`, `Ubuntu`, `Fedora`, `Arch Linux`, etc. (with `Systemd`, `sysvinit`, `openrc`, etc.).
+- Systemd distributions `Debian`, `Ubuntu`, `Fedora`, `Arch Linux`, etc. (with `Systemd`, `sysvinit`, `openrc`, etc.).
 - Non-system distributions such as `Devuan`, `Void Linux`, `Artix Linux`, `Alpine Linux`.
 - Systems with common init systems such as `sysvinit`, `openrc`, `runit`, `s6` or `dinit`.
 
@@ -103,4 +112,167 @@ Here you should check if the script runs in a chroot (e.g. by comparing `/proc/1
 #### 2.3.6. Systems with mixed init systems:
 In rare cases (e.g. in transitions or test environments), several init systems could coexist, making detection more difficult.
 `Systemd` could run as service manager, but another system (e.g. `openrc`) as PID 1. In this case, additional systemd-specific interfaces such as D-bus or systemctl should be required.
+
+### 3. Some Examples
+The examples show how to store the output of the programs in variables, similar to the shell script. I will cover the following languages:
+
+All Examples will return:
+```txt
+Init-System: sysvinit
+Service-Manager: sysvinit
+```
+
+#### 3.1. Bash (sh, bash, zsh)
+
+```bash
+#!/bin/bash
+init_system=$(./get_init_system)
+service_manager=$(./get_service_manager)
+echo "Init-System: $init_system"
+echo "Service-Manager: $service_manager"
+```
+
+#### 3.2. Python
+
+```py
+#!/usr/bin/env python3
+import subprocess
+
+init_system = subprocess.run(["./get_init_system"], capture_output=True, text=True).stdout.strip()
+service_manager = subprocess.run(["./get_service_manager"], capture_output=True, text=True).stdout.strip()
+
+print(f"Init-System: {init_system}")
+print(f"Service-Manager: {service_manager}")
+```
+
+#### 3.3. Perl
+```perl
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+my $init_system = `./get_init_system`;
+my $service_manager = `./get_service_manager`;
+chomp($init_system);
+chomp($service_manager);
+
+print "Init-System: $init_system\n";
+print "Service-Manager: $service_manager\n";
+```
+
+#### 3.4. Ruby
+```ruby
+#!/usr/bin/env ruby
+
+init_system = `./get_init_system`.strip
+service_manager = `./get_service_manager`.strip
+
+puts "Init-System: #{init_system}"
+puts "Service-Manager: #{service_manager}"
+```
+
+#### 3.5. PHP
+```php
+#!/usr/bin/env php
+<?php
+
+$init_system = trim(shell_exec("./get_init_system"));
+$service_manager = trim(shell_exec("./get_service_manager"));
+
+echo "Init-System: $init_system\n";
+echo "Service-Manager: $service_manager\n";
+```
+
+#### 3.6. Node.js (JavaScript)
+```java
+#!/usr/bin/env node
+const { execSync } = require('child_process');
+
+const init_system = execSync('./get_init_system').toString().trim();
+const service_manager = execSync('./get_service_manager').toString().trim();
+
+console.log(`Init-System: ${init_system}`);
+console.log(`Service-Manager: ${service_manager}`);
+```
+
+#### 3.7. C (How to use the binary)
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_LINE 256
+
+char *run_command(const char *cmd) {
+    char *result = malloc(MAX_LINE);
+    if (!result) return NULL;
+    FILE *fp = popen(cmd, "r");
+    if (!fp) {
+        free(result);
+        return NULL;
+    }
+    if (fgets(result, MAX_LINE, fp)) {
+        result[strcspn(result, "\n")] = 0;
+    } else {
+        strcpy(result, "");
+    }
+    pclose(fp);
+    return result;
+}
+
+int main(void) {
+    char *init_system = run_command("./get_init_system");
+    char *service_manager = run_command("./get_service_manager");
+
+    if (init_system) {
+        printf("Init-System: %s\n", init_system);
+        free(init_system);
+    } else {
+        printf("Init-System: error\n");
+    }
+    if (service_manager) {
+        printf("Service-Manager: %s\n", service_manager);
+        free(service_manager);
+    } else {
+        printf("Service-Manager: error\n");
+    }
+
+    return 0;
+}
+```
+
+#### 3.8. Go
+```go
+package main
+
+import (
+    "fmt"
+    "os/exec"
+    "strings"
+)
+
+func runCommand(cmd string) (string, error) {
+    out, err := exec.Command(cmd).Output()
+    if err != nil {
+        return "", err
+    }
+    return strings.TrimSpace(string(out)), nil
+}
+
+func main() {
+    initSystem, err := runCommand("./get_init_system")
+    if err != nil {
+        fmt.Println("Init-System: error")
+    } else {
+        fmt.Printf("Init-System: %s\n", initSystem)
+    }
+
+    serviceManager, err := runCommand("./get_service_manager")
+    if err != nil {
+        fmt.Println("Service-Manager: error")
+    } else {
+        fmt.Printf("Service-Manager: %s\n", serviceManager)
+    }
+}
+```
 
